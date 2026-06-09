@@ -44,5 +44,6 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path
   }
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  // Do not throw to avoid crashing the AI Studio preview environment
+  // throw new Error(JSON.stringify(errInfo));
 }

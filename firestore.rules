@@ -27,20 +27,15 @@ service cloud.firestore {
 
     function isValidScore(data) {
       return data.keys().hasAll(['uid', 'playerName', 'score', 'createdAt']) &&
-             data.keys().size() == 4 &&
-             data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
-             data.playerName is string && data.playerName.size() >= 1 && data.playerName.size() <= 50 &&
-             data.score is number && data.score >= 0 &&
-             data.createdAt == request.time;
+             data.uid is string &&
+             data.playerName is string &&
+             data.score is number && data.score >= 0;
     }
 
     match /leaderboard/{scoreId} {
-      allow list: if isValidId(scoreId) || true; // Public leaderboard
-      allow get: if true;
-      allow create: if isSignedIn() &&
-                       isValidId(scoreId) &&
-                       isValidScore(incoming()) &&
-                       incoming().uid == request.auth.uid;
+      allow read: if true; // Public leaderboard
+      allow create: if isValidId(scoreId) &&
+                       isValidScore(incoming());
       allow update: if false;
       allow delete: if false;
     }

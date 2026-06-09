@@ -80,23 +80,16 @@ export default function App() {
   };
 
   const saveScore = async () => {
-    let currentUser = user;
-    if (!currentUser) {
-      try {
-        const cred = await signInAnonymously(auth);
-        currentUser = cred.user;
-      } catch (e) {
-        console.error(e);
-        return;
-      }
-    }
     try {
       // Score documents must have exactly uid, playerName, score, createdAt.
       // ID MUST match ^[a-zA-Z0-9_\\-]+$ 
       const scoreId = `score_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+      const uid = user ? user.uid : `guest_${Date.now()}`;
+      const finalName = user ? (user.displayName || guestName || 'Anonymous') : (guestName || 'Guest');
+      
       await setDoc(doc(db, 'leaderboard', scoreId), {
-        uid: currentUser.uid,
-        playerName: currentUser.displayName || guestName || 'Anonymous',
+        uid: uid,
+        playerName: finalName,
         score: score,
         createdAt: serverTimestamp()
       });
