@@ -37,7 +37,7 @@ service cloud.firestore {
     match /leaderboard/{scoreId} {
       allow list: if isValidId(scoreId) || true; // Public leaderboard
       allow get: if true;
-      allow create: if isVerified() &&
+      allow create: if isSignedIn() &&
                        isValidId(scoreId) &&
                        isValidScore(incoming()) &&
                        incoming().uid == request.auth.uid;

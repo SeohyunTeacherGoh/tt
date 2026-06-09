@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInAnonymously } from 'firebase/auth';
 import { collection, query, orderBy, limit, getDocs, setDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from './lib/firebase';
 import { handleFirestoreError, OperationType } from './lib/error';
@@ -29,6 +29,8 @@ export default function App() {
   const [gameState, setGameState] = useState<'start' | 'playing' | 'gameover'>('start');
   const [score, setScore] = useState(0);
   const [leaderboard, setLeaderboard] = useState<ScoreEntry[]>([]);
+  const [guestName, setGuestName] = useState('Guest');
+  const [isScoreSaved, setIsScoreSaved] = useState(false);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>(0);
@@ -78,17 +80,27 @@ export default function App() {
   };
 
   const saveScore = async () => {
-    if (!user) return;
+    let currentUser = user;
+    if (!currentUser) {
+      try {
+        const cred = await signInAnonymously(auth);
+        currentUser = cred.user;
+      } catch (e) {
+        console.error(e);
+        return;
+      }
+    }
     try {
       // Score documents must have exactly uid, playerName, score, createdAt.
       // ID MUST match ^[a-zA-Z0-9_\\-]+$ 
       const scoreId = `score_${Date.now()}_${Math.floor(Math.random()*1000)}`;
       await setDoc(doc(db, 'leaderboard', scoreId), {
-        uid: user.uid,
-        playerName: user.displayName || 'Anonymous',
+        uid: currentUser.uid,
+        playerName: currentUser.displayName || guestName || 'Anonymous',
         score: score,
         createdAt: serverTimestamp()
       });
+      setIsScoreSaved(true);
       fetchLeaderboard();
     } catch (error) {
        handleFirestoreError(error, OperationType.CREATE, 'leaderboard');
@@ -97,6 +109,7 @@ export default function App() {
 
   const startGame = () => {
     setScore(0);
+    setIsScoreSaved(false);
     playerRef.current = { x: GAME_WIDTH / 2 - 15, y: GAME_HEIGHT - 50, width: 30, height: 30 };
     bulletsRef.current = [];
     enemiesRef.current = [];
@@ -269,11 +282,24 @@ export default function App() {
               <h2 className="text-4xl font-black italic tracking-tighter mb-4 text-white uppercase text-center">{gameState === 'gameover' ? 'System\nFailure' : 'Ready?'}</h2>
               {gameState === 'gameover' && <p className="mb-6 text-xl font-bold font-mono text-cyan-400">SCORE: {score}</p>}
               {!user && gameState === 'gameover' && score > 0 && (
-                <div className="mb-6 flex flex-col items-center">
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 text-center px-4">Sync required to log score</p>
-                  <button onClick={login} className="px-4 py-2 text-xs font-black tracking-widest uppercase bg-cyan-500 border border-cyan-400 hover:bg-cyan-400 text-black transition shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-                    Authenticate
-                  </button>
+                <div className="mb-6 flex flex-col items-center gap-3 w-full max-w-[240px]">
+                  {!isScoreSaved ? (
+                    <>
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center">Enter callsign to sync score</p>
+                      <input 
+                        type="text" 
+                        value={guestName} 
+                        onChange={(e) => setGuestName(e.target.value.substring(0, 15))} 
+                        placeholder="CALLSIGN" 
+                        className="bg-zinc-900 border border-zinc-700 text-cyan-400 font-mono font-bold text-center px-4 py-2 uppercase outline-none focus:border-cyan-500 transition w-full"
+                      />
+                      <button onClick={saveScore} className="w-full px-4 py-2 text-xs font-black tracking-widest uppercase bg-cyan-500 border border-cyan-400 hover:bg-cyan-400 text-black transition shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                        Sync Score
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest text-center px-4 py-2 border border-emerald-900 bg-emerald-500/10 w-full">Score Synced</p>
+                  )}
                 </div>
               )}
               <button 
