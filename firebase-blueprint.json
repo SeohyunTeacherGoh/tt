@@ -1,0 +1,22 @@
+{
+  "entities": {
+    "Score": {
+      "title": "Score",
+      "description": "A player's score",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "playerName": { "type": "string" },
+        "score": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "playerName", "score", "createdAt"]
+    }
+  },
+  "firestore": {
+    "leaderboard/{scoreId}": {
+      "schema": { "$ref": "#/entities/Score" },
+      "description": "Global leaderboard for the shooting game"
+    }
+  }
+}
